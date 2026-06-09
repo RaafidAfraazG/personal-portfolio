@@ -319,6 +319,7 @@ const projectThumbnailTextById = {
   "lost-pixel-visual-test": "LP",
   "ai-workflow-builder": "AI",
   "data-engineering-pipeline": "DE",
+  "geoboundary-align": "GB",
   "realtime-stock-analysis-kafka": "RT",
   "financial-news-sentiment-analysis": "FN",
   "insider-threat-detection": "IT",
@@ -609,6 +610,24 @@ const projectItems = [
       { icon: SiApachespark, name: "Spark" },
       { icon: SiPostgresql, name: "PostgreSQL" },
       { icon: FaDatabase, name: "Cassandra" },
+    ]),
+  },
+  {
+    id: "geoboundary-align",
+    tab: "AI/Data/Automation",
+    title: "GeoBoundary Align",
+    category: "Geospatial Data Processing",
+    github: "https://github.com/RaafidAfraazG/geoboundary-align",
+    link: "",
+    content:
+      "Geospatial boundary alignment solution that corrects misaligned land plot polygons using satellite imagery, boundary raster hints, shift search, confidence scoring, and GeoJSON outputs.",
+    stack: stack([
+      { icon: SiPython, name: "Python" },
+      { icon: FaDatabase, name: "GeoPandas" },
+      { icon: FaTools, name: "Rasterio" },
+      { icon: FaNetworkWired, name: "Shapely" },
+      { icon: FaRobot, name: "NumPy/SciPy" },
+      { icon: FaDatabase, name: "GeoJSON" },
     ]),
   },
   {
