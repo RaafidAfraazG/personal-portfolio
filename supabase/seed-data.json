@@ -1,0 +1,478 @@
+{
+  "site_content": {
+    "about_me": {
+      "name": "Raafid",
+      "githubUsername": "RaafidAfraazG",
+      "tagLine": "Thinking, Building & Exploring",
+      "intro": "A software engineer focused on turning ideas into products. I enjoy building and shipping across web, app, AI, automation, and data-driven systems.",
+      "aboutHeading": "Building practical software across full-stack, backend, automation, and data-driven systems.",
+      "aboutParagraph": "I'm an Integrated M.Tech Software Engineering student at VIT, focused on building practical software through full-stack apps, backend APIs, automation tools, and data-driven systems. I like turning ideas into usable products and improving them through clean code, debugging, and continuous learning.",
+      "location": "Pernambut, India"
+    },
+    "contact": {
+      "heading": "Let's connect and build something meaningful.",
+      "text": "Thinking, Building & Exploring",
+      "email": "raafid122@gmail.com",
+      "phone": "+91 9042001900",
+      "github": "https://github.com/RaafidAfraazG",
+      "linkedin": "https://www.linkedin.com/in/RaafidAfraazG",
+      "resume": "/resume.pdf"
+    },
+    "profile_photo_url": "/raafid-profile.jpg",
+    "resume_url": "/resume.pdf"
+  },
+  "projects": [
+    {
+      "title": "Automated Outreach Pipeline",
+      "category": "Major Projects",
+      "description": "Node.js outreach pipeline that discovers companies, enriches verified emails, and safely sends outreach through real providers.",
+      "tech_stack": ["Node.js", "JavaScript", "Tavily", "Prospeo", "APIs"],
+      "code_url": "https://github.com/RaafidAfraazG/automated-outreach-pipeline",
+      "live_url": null,
+      "thumbnail_text": "AOP",
+      "image_url": null,
+      "sort_order": 0,
+      "is_visible": true
+    },
+    {
+      "title": "LeadFlow CRM",
+      "category": "Major Projects",
+      "description": "Full-stack lead management CRM with CRUD, search, filters, pagination, status tracking, and backend APIs.",
+      "tech_stack": ["Next.js", "Node.js", "Express", "MongoDB", "REST APIs"],
+      "code_url": "https://github.com/RaafidAfraazG/leadflow-crm",
+      "live_url": null,
+      "thumbnail_text": "LF",
+      "image_url": null,
+      "sort_order": 1,
+      "is_visible": true
+    },
+    {
+      "title": "StockLock",
+      "category": "Major Projects",
+      "description": "Inventory reservation system with atomic stock locking, idempotent checkout, countdown reservations, and expiry handling.",
+      "tech_stack": ["Next.js", "TypeScript", "Prisma", "Supabase", "Redis"],
+      "code_url": "https://github.com/RaafidAfraazG/StockLock",
+      "live_url": null,
+      "thumbnail_text": "SL",
+      "image_url": null,
+      "sort_order": 2,
+      "is_visible": true
+    },
+    {
+      "title": "GitScope API",
+      "category": "Major Projects",
+      "description": "REST API that analyzes GitHub profiles, repositories, stars, forks, languages, and stores insights in MySQL.",
+      "tech_stack": ["Node.js", "Express", "MySQL", "GitHub API"],
+      "code_url": "https://github.com/RaafidAfraazG/gitscope-api",
+      "live_url": null,
+      "thumbnail_text": "GS",
+      "image_url": null,
+      "sort_order": 3,
+      "is_visible": true
+    },
+    {
+      "title": "HR Workflow Designer",
+      "category": "Major Projects",
+      "description": "Visual no-code HR workflow builder with drag-and-drop nodes, dynamic forms, validation, and workflow simulation.",
+      "tech_stack": ["React", "TypeScript", "React Flow", "Zustand", "Vite"],
+      "code_url": "https://github.com/RaafidAfraazG/HR-WORKFLOW---TREDENCE",
+      "live_url": null,
+      "thumbnail_text": "HR",
+      "image_url": null,
+      "sort_order": 4,
+      "is_visible": true
+    },
+    {
+      "title": "Campus Priority Notification System",
+      "category": "Major Projects",
+      "description": "React TypeScript notification dashboard with protected API usage, viewed-state tracking, priority inbox, and logging middleware.",
+      "tech_stack": ["React", "TypeScript", "API Integration", "Logging Middleware"],
+      "code_url": "https://github.com/RaafidAfraazG/22MIS0258",
+      "live_url": null,
+      "thumbnail_text": "CN",
+      "image_url": null,
+      "sort_order": 5,
+      "is_visible": true
+    },
+    {
+      "title": "Worker Attendance & Overtime Settlement Engine",
+      "category": "Backend & APIs",
+      "description": "Spring Boot backend for worker attendance, overtime calculation, settlement, and site management.",
+      "tech_stack": ["Java", "Spring Boot", "REST APIs", "PostgreSQL"],
+      "code_url": "https://github.com/RaafidAfraazG/Worker-Attendance-and-Overtime-Settlement-Engine",
+      "live_url": null,
+      "thumbnail_text": "WA",
+      "image_url": null,
+      "sort_order": 6,
+      "is_visible": true
+    },
+    {
+      "title": "DevOps Release Tracker API",
+      "category": "Backend & APIs",
+      "description": "Spring Boot API for releases, deployment tasks, rollback flow, audit logs, JWT authentication, and Swagger docs.",
+      "tech_stack": ["Java", "Spring Boot", "JWT", "Swagger", "REST APIs"],
+      "code_url": "https://github.com/RaafidAfraazG/DevOps-Release-Tracker-API",
+      "live_url": null,
+      "thumbnail_text": "DR",
+      "image_url": null,
+      "sort_order": 7,
+      "is_visible": true
+    },
+    {
+      "title": "FamCare",
+      "category": "Backend & APIs",
+      "description": "Spring Boot and Thymeleaf-based family care management system with server-side rendered workflows and role-based features.",
+      "tech_stack": ["Java", "Spring Boot", "Thymeleaf", "Spring MVC", "Spring Security"],
+      "code_url": "https://github.com/RaafidAfraazG/FamCare",
+      "live_url": null,
+      "thumbnail_text": "FC",
+      "image_url": null,
+      "sort_order": 8,
+      "is_visible": true
+    },
+    {
+      "title": "BackstopJS Visual Testing API",
+      "category": "Backend & APIs",
+      "description": "Express API that accepts screenshots, runs BackstopJS comparison, and returns pass/fail results with diff images.",
+      "tech_stack": ["Node.js", "Express", "BackstopJS", "Puppeteer", "Multer"],
+      "code_url": "https://github.com/RaafidAfraazG/backstopjs-api",
+      "live_url": null,
+      "thumbnail_text": "BV",
+      "image_url": null,
+      "sort_order": 9,
+      "is_visible": true
+    },
+    {
+      "title": "OSSVEL Tiles",
+      "category": "Frontend/UI",
+      "description": "Frontend implementation for a live tiles business website with responsive layouts, product-focused sections, and clean production UI.",
+      "tech_stack": ["Next.js", "TypeScript", "React"],
+      "code_url": null,
+      "live_url": "https://ossvveltiles.com/",
+      "thumbnail_text": "OT",
+      "image_url": null,
+      "sort_order": 10,
+      "is_visible": true
+    },
+    {
+      "title": "Mindora",
+      "category": "Frontend/UI",
+      "description": "Mental health chatbot system focused on supportive conversations and wellness-oriented user interaction.",
+      "tech_stack": ["JavaScript", "HTML", "CSS"],
+      "code_url": "https://github.com/RaafidAfraazG/Mindora",
+      "live_url": null,
+      "thumbnail_text": "MD",
+      "image_url": null,
+      "sort_order": 11,
+      "is_visible": true
+    },
+    {
+      "title": "SportsFiesta",
+      "category": "Frontend/UI",
+      "description": "Sports event website with responsive pages, event sections, and clean UI presentation.",
+      "tech_stack": ["JavaScript", "HTML", "CSS"],
+      "code_url": "https://github.com/RaafidAfraazG/SportsFiesta",
+      "live_url": null,
+      "thumbnail_text": "SF",
+      "image_url": null,
+      "sort_order": 12,
+      "is_visible": true
+    },
+    {
+      "title": "CineMatch",
+      "category": "Frontend/UI",
+      "description": "Movie discovery interface focused on entertainment browsing and simple recommendation-style UI.",
+      "tech_stack": ["JavaScript", "API", "UI"],
+      "code_url": "https://github.com/RaafidAfraazG/cinematch",
+      "live_url": null,
+      "thumbnail_text": "CM",
+      "image_url": null,
+      "sort_order": 13,
+      "is_visible": true
+    },
+    {
+      "title": "Lost Pixel Visual Test",
+      "category": "Frontend/UI",
+      "description": "Visual regression testing demo that compares UI screenshots and detects layout changes across builds.",
+      "tech_stack": ["Lost Pixel", "HTML", "CSS", "Visual Testing"],
+      "code_url": "https://github.com/RaafidAfraazG/lost-pixel-visual-test",
+      "live_url": null,
+      "thumbnail_text": "LP",
+      "image_url": null,
+      "sort_order": 14,
+      "is_visible": true
+    },
+    {
+      "title": "AI Workflow Builder",
+      "category": "AI/Data/Automation",
+      "description": "No-code AI workflow builder for configurable AI automation flows with document processing and workflow execution.",
+      "tech_stack": ["Python", "FastAPI", "React Flow", "ChromaDB", "OpenAI/Gemini"],
+      "code_url": "https://github.com/RaafidAfraazG/AI-workflow-builder",
+      "live_url": null,
+      "thumbnail_text": "AI",
+      "image_url": null,
+      "sort_order": 15,
+      "is_visible": true
+    },
+    {
+      "title": "End-to-End Data Engineering Pipeline",
+      "category": "AI/Data/Automation",
+      "description": "Data engineering pipeline covering ingestion, streaming, processing, and storage using modern data tools.",
+      "tech_stack": ["Python", "Airflow", "Kafka", "Spark", "PostgreSQL", "Cassandra"],
+      "code_url": "https://github.com/RaafidAfraazG/End-to-End-Data-Engineering-Pipeline",
+      "live_url": null,
+      "thumbnail_text": "DE",
+      "image_url": null,
+      "sort_order": 16,
+      "is_visible": true
+    },
+    {
+      "title": "GeoBoundary Align",
+      "category": "AI/Data/Automation",
+      "description": "Geospatial boundary alignment solution that corrects misaligned land plot polygons using satellite imagery, boundary raster hints, shift search, confidence scoring, and GeoJSON outputs.",
+      "tech_stack": ["Python", "GeoPandas", "Rasterio", "Shapely", "NumPy/SciPy", "GeoJSON"],
+      "code_url": "https://github.com/RaafidAfraazG/geoboundary-align",
+      "live_url": null,
+      "thumbnail_text": "GB",
+      "image_url": null,
+      "sort_order": 17,
+      "is_visible": true
+    },
+    {
+      "title": "Real-Time Stock Analysis Pipeline",
+      "category": "AI/Data/Automation",
+      "description": "Real-time stock market data pipeline using Kafka, Python, and AWS services for storage and querying.",
+      "tech_stack": ["Kafka", "Python", "AWS S3", "AWS Glue", "Athena"],
+      "code_url": "https://github.com/RaafidAfraazG/realtime-stock-analysis-kafka",
+      "live_url": null,
+      "thumbnail_text": "RT",
+      "image_url": null,
+      "sort_order": 18,
+      "is_visible": true
+    },
+    {
+      "title": "Financial News Sentiment Analysis",
+      "category": "AI/Data/Automation",
+      "description": "NLP project for classifying financial news sentiment and analyzing market-related text insights.",
+      "tech_stack": ["Python", "TensorFlow/Keras", "NLP", "Pandas"],
+      "code_url": "https://github.com/RaafidAfraazG/Finanical_news_Sentiment_analysis",
+      "live_url": null,
+      "thumbnail_text": "FN",
+      "image_url": null,
+      "sort_order": 19,
+      "is_visible": true
+    },
+    {
+      "title": "Insider Threat Detection",
+      "category": "AI/Data/Automation",
+      "description": "Full-stack security monitoring system with activity tracking, risk scoring, alerts, audit logs, and admin dashboards.",
+      "tech_stack": ["Node.js", "Express", "React", "JWT", "SQL"],
+      "code_url": "https://github.com/RaafidAfraazG/Insider-Threat-Detection-",
+      "live_url": null,
+      "thumbnail_text": "IT",
+      "image_url": null,
+      "sort_order": 20,
+      "is_visible": true
+    },
+    {
+      "title": "Rainfall Prediction",
+      "category": "AI/Data/Automation",
+      "description": "Machine learning project for rainfall prediction using historical weather-related features and predictive modeling.",
+      "tech_stack": ["Python", "Machine Learning", "Pandas", "Scikit-learn"],
+      "code_url": "https://github.com/RaafidAfraazG/Rain-Fall-Prediction",
+      "live_url": null,
+      "thumbnail_text": "RP",
+      "image_url": null,
+      "sort_order": 21,
+      "is_visible": true
+    },
+    {
+      "title": "Secure IoT-Based Health Monitoring System",
+      "category": "Systems & IoT",
+      "description": "ESP8266 health monitoring system with heart-rate sensing, fall detection, AES-encrypted telemetry, Flask backend, and alert dashboard.",
+      "tech_stack": ["ESP8266", "Arduino C", "Flask", "AES", "I2C"],
+      "code_url": "https://github.com/RaafidAfraazG/secure-iot-health-monitoring",
+      "live_url": null,
+      "thumbnail_text": "IoT",
+      "image_url": null,
+      "sort_order": 22,
+      "is_visible": true
+    },
+    {
+      "title": "Concurrent Key-Value Store",
+      "category": "Systems & IoT",
+      "description": "C++ key-value store focused on concurrency, thread-safe operations, and low-level system design concepts.",
+      "tech_stack": ["C++", "Concurrency", "Systems"],
+      "code_url": "https://github.com/RaafidAfraazG/concurrent-kvstore",
+      "live_url": null,
+      "thumbnail_text": "KV",
+      "image_url": null,
+      "sort_order": 23,
+      "is_visible": true
+    },
+    {
+      "title": "Linux System Monitor",
+      "category": "Systems & IoT",
+      "description": "C++ system monitoring tool for tracking Linux runtime metrics and resource information.",
+      "tech_stack": ["C++", "Linux", "System Monitoring"],
+      "code_url": "https://github.com/RaafidAfraazG/Linux-System-Monitor",
+      "live_url": null,
+      "thumbnail_text": "LM",
+      "image_url": null,
+      "sort_order": 24,
+      "is_visible": true
+    },
+    {
+      "title": "Linux Diagnostics Tool",
+      "category": "Systems & IoT",
+      "description": "Linux diagnostics utility for inspecting system-level information and troubleshooting runtime environment details.",
+      "tech_stack": ["C++", "Linux", "Diagnostics"],
+      "code_url": "https://github.com/RaafidAfraazG/linux-diagnostics",
+      "live_url": null,
+      "thumbnail_text": "LD",
+      "image_url": null,
+      "sort_order": 25,
+      "is_visible": true
+    },
+    {
+      "title": "CPU Cache Simulator",
+      "category": "Systems & IoT",
+      "description": "C++ simulator that demonstrates CPU cache behavior, memory access patterns, and cache performance concepts.",
+      "tech_stack": ["C++", "Computer Architecture", "Cache Simulation"],
+      "code_url": "https://github.com/RaafidAfraazG/cpu-cache-simulator",
+      "live_url": null,
+      "thumbnail_text": "CS",
+      "image_url": null,
+      "sort_order": 26,
+      "is_visible": true
+    }
+  ],
+  "skills": [
+    {
+      "group_name": "Languages",
+      "items": ["Java", "Python", "JavaScript", "TypeScript", "SQL", "C++", "C"],
+      "sort_order": 0,
+      "is_visible": true
+    },
+    {
+      "group_name": "Frontend",
+      "items": ["React.js", "Next.js", "TypeScript", "Tailwind CSS", "HTML", "CSS"],
+      "sort_order": 1,
+      "is_visible": true
+    },
+    {
+      "group_name": "Backend",
+      "items": ["Node.js", "Express.js", "Java", "Spring Boot", "REST APIs", "FastAPI"],
+      "sort_order": 2,
+      "is_visible": true
+    },
+    {
+      "group_name": "Databases",
+      "items": ["MongoDB", "PostgreSQL", "MySQL", "Supabase"],
+      "sort_order": 3,
+      "is_visible": true
+    },
+    {
+      "group_name": "Tools & DevOps",
+      "items": ["Git", "GitHub", "Docker", "GitHub Actions", "Postman", "Vercel", "Render"],
+      "sort_order": 4,
+      "is_visible": true
+    },
+    {
+      "group_name": "Data / Automation / Testing",
+      "items": ["Kafka", "Airflow", "Spark", "BackstopJS", "Playwright", "Selenium", "Visual Regression Testing"],
+      "sort_order": 5,
+      "is_visible": true
+    }
+  ],
+  "experience": [
+    {
+      "title": "Software Engineer Intern",
+      "company": "Statentics DSoft Ltd",
+      "location": "India",
+      "duration": "Jun 2025 - Aug 2025",
+      "bullets": [
+        "Designed scalable backend services using Node.js and MongoDB, supporting high-concurrency SaaS workflows and database-backed modules.",
+        "Delivered frontend and backend features across multiple SaaS modules, working from implementation to deployment with structured API workflows.",
+        "Optimized database queries and API logic, improving average response time and overall application performance.",
+        "Collaborated in an Agile-style workflow with regular deliverables, debugging, testing, and code improvements."
+      ],
+      "sort_order": 0,
+      "is_visible": true
+    }
+  ],
+  "education": [
+    {
+      "degree": "Integrated M.Tech in Software Engineering",
+      "institution": "Vellore Institute of Technology, Vellore",
+      "location": null,
+      "duration": "Aug 2022 - Jun 2027",
+      "score": "CGPA: 8.49",
+      "description": "Focused on software engineering fundamentals, backend development, databases, operating systems, computer networks, cloud computing, software testing, and full-stack project development.",
+      "logo_url": null,
+      "sort_order": 0,
+      "is_visible": true
+    },
+    {
+      "degree": "Higher Secondary Education",
+      "institution": "Islamiah Higher Secondary School, Pernambut",
+      "location": null,
+      "duration": "Aug 2020 - May 2022",
+      "score": "Aggregate: 88.5%",
+      "description": "Completed higher secondary education with a strong foundation in mathematics, science, and problem-solving.",
+      "logo_url": null,
+      "sort_order": 1,
+      "is_visible": true
+    }
+  ],
+  "achievements": [
+    {
+      "title": "Winner - 1st Place",
+      "organization": "BitNBuild'24 Tamil Nadu Regional Round, Google DSC",
+      "description": "Secured first place in the Tamil Nadu regional round.",
+      "link_url": null,
+      "sort_order": 0,
+      "is_visible": true
+    },
+    {
+      "title": "National Finalist",
+      "organization": "BitNBuild'24 Hackathon, Mumbai",
+      "description": "Qualified for the national finals.",
+      "link_url": null,
+      "sort_order": 1,
+      "is_visible": true
+    },
+    {
+      "title": "Top 3 Finalist",
+      "organization": "Neural Nexus'24 AI/ML Hackathon, Vijaybhoomi University",
+      "description": "Reached the top three finalist group in the AI/ML hackathon.",
+      "link_url": null,
+      "sort_order": 2,
+      "is_visible": true
+    },
+    {
+      "title": "Certification",
+      "organization": "IBM Skills Network",
+      "description": "SQL and Relational Databases 101.",
+      "link_url": null,
+      "sort_order": 3,
+      "is_visible": true
+    },
+    {
+      "title": "Advanced through Initial Screening Round",
+      "organization": "EY Techathon 5.0",
+      "description": "Cleared the initial screening stage.",
+      "link_url": null,
+      "sort_order": 4,
+      "is_visible": true
+    },
+    {
+      "title": "Senior Core Member",
+      "organization": "ADGViT ML Domain",
+      "description": "Led technical workshops and mentored junior members on AI and software engineering practices.",
+      "link_url": null,
+      "sort_order": 5,
+      "is_visible": true
+    }
+  ]
+}
