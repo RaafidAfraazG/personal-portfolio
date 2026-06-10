@@ -1,13 +1,32 @@
 {
   "site_content": {
-    "about_me": {
+    "hero": {
+      "greeting": "Hey, I am",
       "name": "Raafid",
-      "githubUsername": "RaafidAfraazG",
-      "tagLine": "Thinking, Building & Exploring",
-      "intro": "A software engineer focused on turning ideas into products. I enjoy building and shipping across web, app, AI, automation, and data-driven systems.",
-      "aboutHeading": "Building practical software across full-stack, backend, automation, and data-driven systems.",
-      "aboutParagraph": "I'm an Integrated M.Tech Software Engineering student at VIT, focused on building practical software through full-stack apps, backend APIs, automation tools, and data-driven systems. I like turning ideas into usable products and improving them through clean code, debugging, and continuous learning.",
-      "location": "Pernambut, India"
+      "tagline": "Thinking, Building & Exploring",
+      "description": "A software engineer focused on turning ideas into products. I enjoy building and shipping across web, app, AI, automation, and data-driven systems."
+    },
+    "about": {
+      "heading": "Building practical software across full-stack, backend, automation, and data-driven systems.",
+      "paragraph": "I'm an Integrated M.Tech Software Engineering student at VIT, focused on building practical software through full-stack apps, backend APIs, automation tools, and data-driven systems. I like turning ideas into usable products and improving them through clean code, debugging, and continuous learning.",
+      "highlights": [
+        {
+          "title": "Full-Stack Development",
+          "text": "React, Next.js, TypeScript, Node.js, and database-backed apps."
+        },
+        {
+          "title": "Backend Engineering",
+          "text": "REST APIs, authentication, database design, and business logic."
+        },
+        {
+          "title": "Automation & Testing",
+          "text": "Workflow automation, visual regression testing, and CI/CD pipelines."
+        },
+        {
+          "title": "Data & Systems",
+          "text": "Kafka pipelines, C++ systems projects, and IoT prototypes."
+        }
+      ]
     },
     "contact": {
       "heading": "Let's connect and build something meaningful.",
@@ -16,10 +35,14 @@
       "phone": "+91 9042001900",
       "github": "https://github.com/RaafidAfraazG",
       "linkedin": "https://www.linkedin.com/in/RaafidAfraazG",
-      "resume": "/resume.pdf"
+      "website": "https://raafidafraaz.in"
     },
-    "profile_photo_url": "/raafid-profile.jpg",
-    "resume_url": "/resume.pdf"
+    "profile": {
+      "profile_photo_url": "/raafid-profile.jpg"
+    },
+    "resume": {
+      "resume_url": "/resume.pdf"
+    }
   },
   "projects": [
     {

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AiOutlineMenu, AiOutlineClose } from "react-icons/ai";
 import ProfileImage from "./ProfileImage";
 
-const Navbar = () => {
+const Navbar = ({ links = navLinks, profilePhotoUrl }) => {
   const [toggle, setToggle] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -46,7 +46,7 @@ const Navbar = () => {
             }}
         >
             <div className="relative w-[40px] h-[40px] rounded-full overflow-hidden border-2 border-white shadow-sm group-hover:border-secondary transition-colors duration-300">
-                <ProfileImage className="w-full h-full object-cover" />
+                <ProfileImage className="w-full h-full object-cover" src={profilePhotoUrl} />
             </div>
             <span className={`font-poppins font-medium text-base tracking-tight ${scrolled ? "text-primary" : "text-primary"} group-hover:text-secondary transition-colors`}>
                 Raafid Afraaz G
@@ -55,7 +55,7 @@ const Navbar = () => {
 
         {/* Desktop Navigation */}
         <ul className="list-none sm:flex hidden justify-end items-center flex-1 gap-4">
-            {navLinks.map((nav) => (
+            {links.map((nav) => (
             <li
                 key={nav.id}
                 className={`font-poppins font-normal cursor-pointer text-[20px] relative group ${
@@ -110,7 +110,7 @@ const Navbar = () => {
                     className="p-6 bg-white/90 backdrop-blur-xl border border-white/50 absolute top-full left-1/2 mt-2 min-w-[280px] rounded-2xl shadow-xl z-50 origin-top"
                 >
                     <ul className="list-none flex flex-col justify-end items-center flex-1 gap-4">
-                        {navLinks.map((nav) => (
+                        {links.map((nav) => (
                         <li
                             key={nav.id}
                             className="font-poppins font-normal cursor-pointer text-[16px] text-gray-700 hover:text-secondary w-full transition-colors flex items-center justify-center gap-2 group"

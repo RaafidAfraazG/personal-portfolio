@@ -113,7 +113,7 @@ const AchievementCard = (props) => {
   );
 };
 
-const Achievements = () => {
+const Achievements = ({ achievementsData = achievements }) => {
   return (
     <section id="achievements">
       <h1 className={`${styles.heading2} text-center pt-10`}>
@@ -122,7 +122,7 @@ const Achievements = () => {
 
       <div className="container px-2 py-10 mx-auto mb-8">
         <div className="grid grid-cols-1 gap-8 mt-8 md:mt-16 md:grid-cols-2">
-          {achievements.map((achievement, index) => (
+          {achievementsData.map((achievement, index) => (
             <AchievementCard key={achievement.id} {...achievement} />
           ))}
         </div>

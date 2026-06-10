@@ -15,8 +15,16 @@ const defaultOptions = {
   },
 };
 
-const Hero = () => {
+const Hero = ({ heroContent }) => {
   const [mounted, setMounted] = useState(false);
+  const content = {
+    greeting: "Hey, I am",
+    name: aboutMe.name,
+    tagline: aboutMe.tagLine,
+    description: aboutMe.intro,
+    ...heroContent,
+  };
+
   useEffect(() => setMounted(true), []);
 
   return (
@@ -37,18 +45,18 @@ const Hero = () => {
         >
 
             <h1 className="font-poppins font-normal tracking-tight ss:text-[60px] text-[44px] text-primary ss:leading-[76px] leading-[58px] mb-5">
-                Hey, I am <br className="sm:block hidden" />
+                {content.greeting} <br className="sm:block hidden" />
                 <span className="text-secondary relative inline-block">
-                    {aboutMe.name}
+                    {content.name}
                     <svg className="absolute w-full h-[10px] -bottom-1 left-0 text-secondary opacity-30" viewBox="0 0 200 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.00025 6.99997C25.7501 2.49994 132.5 -1.49992 198 7.99996" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
                 </span>
             </h1>
             
             <p className={`max-w-[440px] font-poppins text-xl text-gray-700 font-light italic`}>
-                {aboutMe.tagLine}
+                {content.tagline}
             </p>
             <p className={`${styles.paragraph} max-w-[440px] mt-5 text-gray-600 text-[15px] leading-relaxed`}>
-                {aboutMe.intro}
+                {content.description}
             </p>
 
         </motion.div>

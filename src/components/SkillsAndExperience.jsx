@@ -131,7 +131,7 @@ const SkillGroup = (props) => (
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-100"
           title={skill.name}
         >
-          {React.createElement(skill.icon, { size: 18 })}
+          {skill.icon ? React.createElement(skill.icon, { size: 18 }) : null}
           <span className="font-poppins font-normal text-[13px]">{skill.name}</span>
         </div>
       ))}
@@ -149,25 +149,37 @@ const AboutCard = (props) => (
       {props.title}
     </h3>
     <p className="font-poppins font-normal text-[13px] text-gray-600 leading-relaxed">
-      {props.content}
+      {props.content || props.text}
     </p>
   </motion.div>
 );
 
-const SkillsAndExperience = () => {
+const SkillsAndExperience = ({
+  aboutContent,
+  skillsData = skills,
+  experiencesData = experiences,
+  educationData = educationList,
+}) => {
+  const about = {
+    heading: aboutMe.aboutHeading,
+    paragraph: aboutMe.aboutParagraph,
+    highlights: aboutHighlights,
+    ...aboutContent,
+  };
+
   return (
     <section id="skills" className="mb-10 mx-auto">
       <div className="mt-10 mb-12">
         <h2 className={`${styles.heading2} mb-5`}>About</h2>
         <p className="font-poppins font-medium tracking-tight text-[19px] text-primary leading-[30px] max-w-4xl mb-3">
-          {aboutMe.aboutHeading}
+          {about.heading}
         </p>
         <p className={`${styles.paragraph} max-w-4xl text-gray-600`}>
-          {aboutMe.aboutParagraph}
+          {about.paragraph}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-          {aboutHighlights.map((highlight) => (
-            <AboutCard key={highlight.id} {...highlight} />
+          {about.highlights.map((highlight, index) => (
+            <AboutCard key={highlight.id || `${highlight.title}-${index}`} {...highlight} />
           ))}
         </div>
       </div>
@@ -175,7 +187,7 @@ const SkillsAndExperience = () => {
       <div className="mb-12">
         <h2 className={`${styles.heading2} mb-8`}>Skills</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {skills.map((skillGroup) => (
+          {skillsData.map((skillGroup) => (
             <SkillGroup key={skillGroup.title} {...skillGroup} />
           ))}
         </div>
@@ -186,7 +198,7 @@ const SkillsAndExperience = () => {
           <div>
             <h2 className={`${styles.heading2} mb-8`}>Experience</h2>
             <div className="flex flex-col gap-6">
-                {experiences.map((exp, index) => (
+                {experiencesData.map((exp, index) => (
                     <ExperienceCard key={index} index={index} {...exp} />
                 ))}
             </div>
@@ -196,7 +208,7 @@ const SkillsAndExperience = () => {
           <div>
             <h2 className={`${styles.heading2} mb-8`}>Education</h2>
              <div className="flex flex-col gap-6">
-                {educationList.map((edu, index) => (
+                {educationData.map((edu, index) => (
                     <EducationCard key={index} index={index} {...edu} />
                 ))}
             </div>

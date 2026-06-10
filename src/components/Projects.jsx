@@ -40,7 +40,7 @@ const Project = (props) => {
                   key={tech.id}
                   className="relative group text-gray-500 hover:text-secondary transition-colors text-[18px] cursor-pointer"
                 >
-                  {React.createElement(tech.icon)}
+                  {tech.icon ? React.createElement(tech.icon) : null}
                   <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                     {tech.name}
                   </span>
@@ -82,15 +82,15 @@ const Project = (props) => {
   );
 };
 
-const Projects = () => {
-  const [activeTab, setActiveTab] = useState(projectTabs[0]);
+const Projects = ({ projectsData = projects, tabs = projectTabs }) => {
+  const [activeTab, setActiveTab] = useState(tabs[0]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardTotalWidth, setCardTotalWidth] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const containerRef = useRef(null);
-  const activeProjects = projects.filter((project) => project.tab === activeTab);
+  const activeProjects = projectsData.filter((project) => project.tab === activeTab);
 
   useEffect(() => {
     const updateCardWidth = () => {
@@ -117,6 +117,12 @@ const Projects = () => {
     setCurrentIndex(0);
     setDragOffset(0);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!tabs.includes(activeTab)) {
+      setActiveTab(tabs[0]);
+    }
+  }, [activeTab, tabs]);
 
   const handleNext = () => {
     if (currentIndex < activeProjects.length - 1) {
@@ -180,7 +186,7 @@ const Projects = () => {
       <div className={` ${styles.flexCenter} ${styles.paddingX}`}>
         <div className={`${styles.boxWidth} overflow-hidden`}>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
-            {projectTabs.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
