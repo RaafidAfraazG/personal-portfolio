@@ -29,15 +29,15 @@ const Footer = ({
 
         if (!settings?.value) return;
 
-        // Fetch total count
+        // Fetch total count (now using total_visits)
         const { data: countData } = await supabase
           .from("visitor_count_cache")
-          .select("total_count")
+          .select("total_visits")
           .eq("id", 1)
           .single();
 
-        if (countData?.total_count != null) {
-          setVisitorCount(Number(countData.total_count));
+        if (countData?.total_visits != null) {
+          setVisitorCount(Number(countData.total_visits));
           setShowCounter(true);
         }
       } catch {
@@ -119,7 +119,7 @@ const Footer = ({
       {showCounter && visitorCount !== null && (
         <p className="mt-1 text-gray-400 text-[11px] flex items-center justify-center gap-1">
           <span>👁</span>
-          <span>{visitorCount.toLocaleString()} total visitors</span>
+          <span>{visitorCount.toLocaleString()} total visits</span>
         </p>
       )}
     </div>

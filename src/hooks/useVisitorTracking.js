@@ -1,26 +1,28 @@
 import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-// Dev-only logger — stripped to no-ops in production builds
+// Dev-only logger — no-ops in production builds (import.meta.env.DEV = false)
 const DEV = import.meta.env.DEV;
 const log = DEV ? console.log.bind(console, "[Tracking]") : () => {};
 const warn = DEV ? console.warn.bind(console, "[Tracking]") : () => {};
 const err = DEV ? console.error.bind(console, "[Tracking]") : () => {};
 
+// ── Constants ─────────────────────────────────────────────────────────────
+
+// 30-minute anti-spam window for total_visits.
+// Prevents a rapid-refresh from inflating the visit counter.
+const VISIT_SPAM_WINDOW_MS = 30 * 60 * 1000;
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Generate a UUID v4 */
 function generateUUID() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
 
-/** Classify referrer URL into a human-friendly label */
 function classifyReferrer(referrerUrl) {
   if (!referrerUrl) return "Direct";
   try {
@@ -45,7 +47,6 @@ function classifyReferrer(referrerUrl) {
   }
 }
 
-/** Parse OS from userAgent */
 function detectOS(ua) {
   if (/Windows NT 10/.test(ua)) return "Windows 10/11";
   if (/Windows NT 6\.3/.test(ua)) return "Windows 8.1";
@@ -60,9 +61,7 @@ function detectOS(ua) {
   return "Unknown";
 }
 
-/** Parse browser name and version from userAgent */
 function detectBrowser(ua) {
-  // Order matters — check more specific patterns first
   const patterns = [
     { name: "Edge", re: /Edg(?:e|A|iOS)?\/(\d+)/ },
     { name: "Samsung Internet", re: /SamsungBrowser\/(\d+)/ },
@@ -73,7 +72,6 @@ function detectBrowser(ua) {
     { name: "Safari", re: /Version\/(\d+).*Safari/ },
     { name: "IE", re: /Trident.*rv:(\d+)/ },
   ];
-
   for (const { name, re } of patterns) {
     const match = ua.match(re);
     if (match) return { browser: name, browser_version: match[1] };
@@ -81,61 +79,85 @@ function detectBrowser(ua) {
   return { browser: "Unknown", browser_version: "" };
 }
 
-/** Detect device type */
 function detectDevice(ua) {
   if (/Tablet|iPad/i.test(ua)) return "Tablet";
   if (/Mobile|iPhone|Android(?!.*Tablet)|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return "Mobile";
   return "Desktop";
 }
 
-/** Get or create a persistent anonymous visitor ID */
 function getOrCreateVisitorId() {
   const key = "portfolio_visitor_id";
-  let id = null;
   try {
-    id = localStorage.getItem(key);
+    let id = localStorage.getItem(key);
     if (!id) {
       id = generateUUID();
       localStorage.setItem(key, id);
     }
+    return id;
   } catch {
-    id = generateUUID();
+    return generateUUID();
   }
-  return id;
 }
 
 /**
- * Returns the raw timestamp (ms) of the last tracked visit, or null.
- * Also doubles as the 24 h guard — callers check `lastTrackedMs !== null`.
+ * Returns the raw ms timestamp of the last unique-visitor record, or null if
+ * the 24 h dedup window has expired / no record exists.
+ * "Returning" = same browser, same day (< 24 h since last tracked).
  */
 function getLastTrackedMs() {
   try {
     const raw = localStorage.getItem("portfolio_last_tracked_at");
     if (!raw) return null;
     const ts = parseInt(raw, 10);
-    const elapsed = Date.now() - ts;
-    // Only count as "within window" if less than 24 h
-    return elapsed < 24 * 60 * 60 * 1000 ? ts : null;
+    return Date.now() - ts < 24 * 60 * 60 * 1000 ? ts : null;
   } catch {
     return null;
   }
 }
 
-/** Persist the current timestamp so the 24 h guard fires on the next visit */
+/** Persist current timestamp — marks the unique-visitor 24 h window. */
 function markTracked() {
   try {
     localStorage.setItem("portfolio_last_tracked_at", String(Date.now()));
+  } catch { /* ignore */ }
+}
+
+/**
+ * Returns true if the VISIT spam window (30 min) has not yet elapsed.
+ * Used to prevent rapid refresh from inflating total_visits.
+ */
+function isWithinVisitSpamWindow() {
+  try {
+    const raw = localStorage.getItem("portfolio_last_visit_at");
+    if (!raw) return false;
+    return Date.now() - parseInt(raw, 10) < VISIT_SPAM_WINDOW_MS;
   } catch {
-    // Ignore storage errors
+    return false;
   }
+}
+
+/** Persist current timestamp — marks the 30 min visit spam window. */
+function markVisited() {
+  try {
+    localStorage.setItem("portfolio_last_visit_at", String(Date.now()));
+  } catch { /* ignore */ }
 }
 
 // ── Main hook ──────────────────────────────────────────────────────────────
 
 /**
- * useVisitorTracking — silently records unique visits and notifies on every
- * page load (new visitors counted + notified; returning visitors notified only,
- * never double-counted). No visible UI effect. Respects admin feature flags.
+ * useVisitorTracking
+ *
+ * Metrics updated per visit type:
+ *
+ * | Visit type         | visitors row | unique_visitors | total_visits | Telegram |
+ * |--------------------|:------------:|:---------------:|:------------:|:--------:|
+ * | New (first time)   |      ✓       |        ✓        |      ✓       |    🆕    |
+ * | Returning (< 24 h) |      ✗       |        ✗        |      ✓ *     |    🔄    |
+ * | Rapid refresh      |      ✗       |        ✗        |      ✗       |    ✗     |
+ *
+ * * total_visits is incremented via the increment_total_visits() RPC —
+ *   no direct table write, no RLS required, security definer function.
  */
 export function useVisitorTracking() {
   useEffect(() => {
@@ -153,7 +175,6 @@ export function useVisitorTracking() {
           .select("key, value");
 
         if (settingsError) warn("Could not fetch settings:", settingsError.message);
-
         if (cancelled) return;
 
         const settingsMap = (settings || []).reduce((acc, row) => {
@@ -168,15 +189,21 @@ export function useVisitorTracking() {
           return;
         }
 
-        // ── 2. Determine if this is a returning visitor ────────────────────
-        // getLastTrackedMs() returns the previous timestamp if within 24 h,
-        // or null if the visitor is new (or the window has expired).
-        const lastTrackedMs = getLastTrackedMs();
+        // ── 2. Classify visit type ────────────────────────────────────────
+        const lastTrackedMs = getLastTrackedMs(); // null = new visitor
         const isReturning = lastTrackedMs !== null;
 
-        log(isReturning ? "Returning visitor (within 24 h window)." : "New visitor.");
+        log(isReturning ? "Returning visitor (within 24 h)." : "New visitor.");
 
-        // ── 3. Collect visitor data ────────────────────────────────────────
+        // ── 3. Anti-spam guard for total_visits ───────────────────────────
+        // For returning visitors: skip everything if we've already counted
+        // a visit within the 30-minute spam window.
+        if (isReturning && isWithinVisitSpamWindow()) {
+          log("Within 30-min visit spam window — skipping entirely.");
+          return;
+        }
+
+        // ── 4. Collect visitor data ───────────────────────────────────────
         const ua = navigator.userAgent;
         const visitorId = getOrCreateVisitorId();
         const { browser, browser_version } = detectBrowser(ua);
@@ -187,8 +214,9 @@ export function useVisitorTracking() {
 
         log("Collected data:", { visitorId, os, browser, browser_version, device_type, referrer, page });
 
-        // ── 4. New visitor path: insert row + update count ─────────────────
-        let totalCount = null;
+        // ── 5. New visitor: insert row (trigger handles unique_visitors + total_visits)
+        let uniqueVisitors = null;
+        let totalVisits = null;
 
         if (!isReturning) {
           const { error: insertError } = await supabase.from("visitors").insert({
@@ -209,87 +237,120 @@ export function useVisitorTracking() {
               insertError.message?.toLowerCase().includes("unique");
 
             if (isDuplicate) {
-              // Server-side unique index caught a duplicate the client missed
-              log("Server-side duplicate detected — marking locally and notifying as returning.");
+              // Server-side unique index caught what the client missed.
+              // Treat as returning: mark locally so we get the 24 h guard next time.
+              log("Server-side duplicate — treating as returning visitor.");
               markTracked();
-              // Fall through to notify as returning — the visitor WAS here before
+              // Fall through to returning-visitor path below
             } else {
               warn("Insert failed:", insertError.message, insertError.code);
               return;
             }
           } else {
-            log("Visitor row inserted successfully.");
+            log("Visitor row inserted. Trigger will update unique_visitors + total_visits.");
             markTracked();
+            markVisited();
 
-            // Fetch updated count (best-effort — must NOT block notification)
+            // Fetch counts after insert (best-effort; must NOT block notification)
             try {
               const { data: countData, error: countError } = await supabase
                 .from("visitor_count_cache")
-                .select("total_count")
+                .select("unique_visitors, total_visits")
                 .eq("id", 1)
                 .single();
 
               if (countError) {
                 warn("Count query error (non-fatal):", countError.message);
               } else {
-                totalCount = countData?.total_count ?? null;
-                log("Total visitor count:", totalCount);
+                uniqueVisitors = countData?.unique_visitors ?? null;
+                totalVisits = countData?.total_visits ?? null;
+                log("Counts after insert — unique:", uniqueVisitors, "| total visits:", totalVisits);
               }
             } catch (countErr) {
               warn("Count query threw (non-fatal):", countErr);
             }
+
+            // Invoke Edge Function for new visitor then return
+            if (settingsMap.notifications_enabled !== false) {
+              log("Invoking notify-visitor (new visitor)...");
+              supabase.functions
+                .invoke("notify-visitor", {
+                  body: {
+                    visitor_id: visitorId,
+                    os, browser, browser_version, device_type, referrer, page,
+                    unique_visitors: uniqueVisitors,
+                    total_visits: totalVisits,
+                    is_returning: false,
+                    last_visit_ms: null,
+                  },
+                })
+                .then(({ data: fnData, error: fnError }) => {
+                  if (fnError) warn("Edge Function error (new):", fnError);
+                  else log("Edge Function responded:", fnData);
+                })
+                .catch((e) => warn("Edge Function threw (new):", e));
+            }
+            return;
           }
         }
 
-        // ── 5. Invoke Edge Function ────────────────────────────────────────
-        // Always fires — for new visitors (after insert) and returning visitors.
-        // Returning visitors are notified but never counted.
+        // ── 6. Returning visitor: increment total_visits via RPC ──────────
+        // The visitors table is NOT touched — unique_visitors stays unchanged.
+        log("Incrementing total_visits via RPC (returning visitor)...");
+        const { error: rpcError } = await supabase.rpc("increment_total_visits");
+        if (rpcError) warn("increment_total_visits RPC error (non-fatal):", rpcError.message);
+
+        markVisited();
+
+        // Fetch updated counts (best-effort)
+        try {
+          const { data: countData, error: countError } = await supabase
+            .from("visitor_count_cache")
+            .select("unique_visitors, total_visits")
+            .eq("id", 1)
+            .single();
+
+          if (countError) {
+            warn("Count query error (non-fatal):", countError.message);
+          } else {
+            uniqueVisitors = countData?.unique_visitors ?? null;
+            totalVisits = countData?.total_visits ?? null;
+            log("Counts after return — unique:", uniqueVisitors, "| total visits:", totalVisits);
+          }
+        } catch (countErr) {
+          warn("Count query threw (non-fatal):", countErr);
+        }
+
+        // ── 7. Invoke Edge Function for returning visitor ─────────────────
         if (settingsMap.notifications_enabled === false) {
-          log("Telegram notifications disabled — skipping Edge Function call.");
+          log("Telegram notifications disabled — skipping.");
           return;
         }
 
-        log(
-          isReturning
-            ? "Invoking notify-visitor (returning visitor)..."
-            : "Invoking notify-visitor (new visitor)...",
-        );
-
+        log("Invoking notify-visitor (returning visitor)...");
         supabase.functions
           .invoke("notify-visitor", {
             body: {
               visitor_id: visitorId,
-              os,
-              browser,
-              browser_version,
-              device_type,
-              referrer,
-              page,
-              total_count: totalCount,
-              is_returning: isReturning,
-              // ms elapsed since last visit — Edge Function formats this as "3h 17m ago"
-              last_visit_ms: isReturning ? Date.now() - lastTrackedMs : null,
+              os, browser, browser_version, device_type, referrer, page,
+              unique_visitors: uniqueVisitors,
+              total_visits: totalVisits,
+              is_returning: true,
+              last_visit_ms: lastTrackedMs !== null ? Date.now() - lastTrackedMs : null,
             },
           })
           .then(({ data: fnData, error: fnError }) => {
-            if (fnError) warn("Edge Function returned error:", fnError);
+            if (fnError) warn("Edge Function error (returning):", fnError);
             else log("Edge Function responded:", fnData);
           })
-          .catch((invokeErr) => {
-            warn("Edge Function invocation threw:", invokeErr);
-          });
+          .catch((e) => warn("Edge Function threw (returning):", e));
 
       } catch (unexpected) {
         err("Unexpected error in tracking flow:", unexpected);
       }
     }
 
-    // Small delay so tracking doesn't compete with critical first-render work
     const timer = setTimeout(track, 1500);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 }

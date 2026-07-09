@@ -1,4 +1,4 @@
-﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Dev-only logger — Supabase automatically sets DENO_ENV=production on deployed functions.
 // In local `supabase functions serve`, DENO_ENV is unset, so logs appear during development.
@@ -52,7 +52,8 @@ Deno.serve(async (req: Request) => {
       device_type,
       referrer,
       page,
-      total_count,
+      unique_visitors,
+      total_visits,
       is_returning,
       last_visit_ms,
     } = body as {
@@ -63,7 +64,8 @@ Deno.serve(async (req: Request) => {
       device_type?: string;
       referrer?: string;
       page?: string;
-      total_count?: number | null;
+      unique_visitors?: number | null;
+      total_visits?: number | null;
       is_returning?: boolean;
       last_visit_ms?: number | null;
     };
@@ -71,7 +73,8 @@ Deno.serve(async (req: Request) => {
     log("Payload:", {
       visitor_id: visitor_id ? visitor_id.slice(0, 8) + "..." : "none",
       is_returning, last_visit_ms,
-      os, browser, browser_version, device_type, referrer, page, total_count,
+      os, browser, browser_version, device_type, referrer, page,
+      unique_visitors, total_visits,
     });
 
     // ── 2. Check notifications_enabled setting ─────────────────────────────
@@ -188,7 +191,8 @@ Deno.serve(async (req: Request) => {
         `📄 *Page:* ${page || "/"}`,
         ``,
         `👤 *Visitor ID:* \`${shortId}...\``,
-        `📈 *Total Visitors:* ${total_count ?? "—"}`,
+        `👥 *Unique Visitors:* ${unique_visitors ?? "—"}`,
+        `👁 *Total Visits:* ${total_visits ?? "—"}`,
       ].join("\n");
     } else {
       // ── New visitor ───────────────────────────────────────────────────────
@@ -204,7 +208,8 @@ Deno.serve(async (req: Request) => {
         `📄 *Page:* ${page || "/"}`,
         ``,
         `👤 *Visitor ID:* \`${shortId}...\``,
-        `📈 *Total Visitors:* ${total_count ?? "—"}`,
+        `👥 *Unique Visitors:* ${unique_visitors ?? "—"}`,
+        `👁 *Total Visits:* ${total_visits ?? "—"}`,
       ].join("\n");
     }
 

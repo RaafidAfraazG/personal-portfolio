@@ -252,19 +252,31 @@ create table if not exists public.visitors (
 create unique index if not exists visitors_visitor_id_day_idx
   on public.visitors (visitor_id, date_trunc('day', created_at AT TIME ZONE 'UTC'));
 
--- visitor_count_cache: single row holding total unique visitor count
+-- visitor_count_cache: single row holding both unique visitors and total visits
 create table if not exists public.visitor_count_cache (
   id int primary key default 1,
-  total_count bigint not null default 0,
+  total_count    bigint not null default 0,  -- kept for backward compat (= unique_visitors)
+  unique_visitors bigint not null default 0, -- unique visitors (same as total_count)
+  total_visits   bigint not null default 0,  -- every visit, including returning
   updated_at timestamptz default now()
 );
 
--- Seed initial cache row
-insert into public.visitor_count_cache (id, total_count)
-  values (1, 0)
+-- Seed initial cache row (safe to re-run)
+insert into public.visitor_count_cache (id, total_count, unique_visitors, total_visits)
+  values (1, 0, 0, 0)
   on conflict (id) do nothing;
 
--- Trigger function: increment cache on each new visitor row
+-- If this is a migration on an existing database, copy total_count → unique_visitors
+-- and seed total_visits at the same value (best approximation of historical data).
+update public.visitor_count_cache
+  set unique_visitors = total_count,
+      total_visits    = total_count
+  where id = 1
+    and unique_visitors = 0
+    and total_count > 0;
+
+-- Trigger function: fires on every new unique visitor INSERT.
+-- Increments total_count (legacy), unique_visitors, AND total_visits.
 create or replace function public.increment_visitor_count()
 returns trigger
 language plpgsql
@@ -272,8 +284,10 @@ security definer
 as $$
 begin
   update public.visitor_count_cache
-    set total_count = total_count + 1,
-        updated_at  = now()
+    set total_count     = total_count + 1,
+        unique_visitors = unique_visitors + 1,
+        total_visits    = total_visits + 1,
+        updated_at      = now()
     where id = 1;
   return new;
 end;
@@ -284,6 +298,24 @@ create trigger on_visitor_insert
   after insert on public.visitors
   for each row
   execute function public.increment_visitor_count();
+
+-- RPC: increment only total_visits (for returning visitors who are NOT inserted).
+-- Uses security definer so the anon role can call it without direct UPDATE access.
+create or replace function public.increment_total_visits()
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  update public.visitor_count_cache
+    set total_visits = total_visits + 1,
+        updated_at   = now()
+    where id = 1;
+end;
+$$;
+
+-- Allow unauthenticated callers to increment total_visits via RPC
+grant execute on function public.increment_total_visits() to anon;
 
 -- ============================================================
 -- RLS for visitor tracking tables

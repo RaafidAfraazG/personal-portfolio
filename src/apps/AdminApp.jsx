@@ -976,7 +976,8 @@ const VisitorsPage = () => {
     show_public_counter: true,
   });
   const [visitors, setVisitors] = useState([]);
-  const [totalCount, setTotalCount] = useState(null);
+  const [uniqueCount, setUniqueCount] = useState(null);
+  const [totalVisits, setTotalVisits] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [activeTab, setActiveTab] = useState("settings");
@@ -996,13 +997,14 @@ const VisitorsPage = () => {
       }, {});
       setSettings((prev) => ({ ...prev, ...map }));
 
-      // Load total count
+      // Load total counts
       const { data: countData } = await supabase
         .from("visitor_count_cache")
-        .select("total_count")
+        .select("unique_visitors, total_visits")
         .eq("id", 1)
         .single();
-      setTotalCount(countData?.total_count ?? 0);
+      setUniqueCount(countData?.unique_visitors ?? 0);
+      setTotalVisits(countData?.total_visits ?? 0);
 
       // Load recent visitors
       const { data: visitorsData, error: visitorsErr } = await supabase
@@ -1054,11 +1056,17 @@ const VisitorsPage = () => {
   return (
     <div className="grid gap-6">
       {/* Header stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-lg border border-[#31c0f4]/40 bg-[#31c0f4]/5 p-5">
-          <p className="text-sm font-light text-secondary">Total Unique Visitors</p>
+          <p className="text-sm font-light text-secondary">👥 Unique Visitors</p>
           <p className="mt-2 text-3xl font-normal text-primary">
-            {loading ? "—" : (totalCount ?? 0).toLocaleString()}
+            {loading ? "—" : (uniqueCount ?? 0).toLocaleString()}
+          </p>
+        </article>
+        <article className="rounded-lg border border-purple-500/40 bg-purple-500/5 p-5">
+          <p className="text-sm font-light text-purple-600">👁️ Total Visits</p>
+          <p className="mt-2 text-3xl font-normal text-primary">
+            {loading ? "—" : (totalVisits ?? 0).toLocaleString()}
           </p>
         </article>
         <article className="rounded-lg border border-[#163269]/10 p-5">
