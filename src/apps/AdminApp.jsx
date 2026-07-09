@@ -21,6 +21,7 @@ const sections = [
   "Education",
   "Achievements",
   "Assets",
+  "Visitors",
   "Settings",
 ];
 
@@ -939,6 +940,266 @@ const UploadCard = ({ disabled, label, onUpload }) => {
   );
 };
 
+// ── Visitor Tracking Admin Section ────────────────────────────────────────
+
+const ToggleSwitch = ({ checked, disabled, label, description, onChange }) => (
+  <div className="flex items-start justify-between gap-4 rounded-lg border border-[#163269]/10 p-4">
+    <div>
+      <p className="text-sm font-medium text-primary">{label}</p>
+      {description && (
+        <p className="mt-1 text-xs font-light text-[#4a5568]">{description}</p>
+      )}
+    </div>
+    <button
+      aria-checked={checked}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+        checked ? "bg-secondary" : "bg-gray-200"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      role="switch"
+      type="button"
+    >
+      <span
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  </div>
+);
+
+const VisitorsPage = () => {
+  const [settings, setSettings] = useState({
+    tracking_enabled: true,
+    notifications_enabled: true,
+    show_public_counter: true,
+  });
+  const [visitors, setVisitors] = useState([]);
+  const [totalCount, setTotalCount] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState(null);
+  const [activeTab, setActiveTab] = useState("settings");
+
+  const loadData = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      // Load settings
+      const { data: settingsData, error: settingsErr } = await supabase
+        .from("visitor_settings")
+        .select("key, value");
+      if (settingsErr) throw settingsErr;
+      const map = (settingsData || []).reduce((acc, row) => {
+        acc[row.key] = row.value;
+        return acc;
+      }, {});
+      setSettings((prev) => ({ ...prev, ...map }));
+
+      // Load total count
+      const { data: countData } = await supabase
+        .from("visitor_count_cache")
+        .select("total_count")
+        .eq("id", 1)
+        .single();
+      setTotalCount(countData?.total_count ?? 0);
+
+      // Load recent visitors
+      const { data: visitorsData, error: visitorsErr } = await supabase
+        .from("visitors")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (visitorsErr) throw visitorsErr;
+      setVisitors(visitorsData || []);
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const updateSetting = async (key, value) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+    try {
+      const { error } = await supabase
+        .from("visitor_settings")
+        .update({ value, updated_at: new Date().toISOString() })
+        .eq("key", key);
+      if (error) throw error;
+      setMessage({ type: "success", text: "Setting saved." });
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+      // Revert optimistic update
+      setSettings((prev) => ({ ...prev, [key]: !value }));
+    }
+  };
+
+  const toIST = (isoString) => {
+    try {
+      return new Date(isoString).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  return (
+    <div className="grid gap-6">
+      {/* Header stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <article className="rounded-lg border border-[#31c0f4]/40 bg-[#31c0f4]/5 p-5">
+          <p className="text-sm font-light text-secondary">Total Unique Visitors</p>
+          <p className="mt-2 text-3xl font-normal text-primary">
+            {loading ? "—" : (totalCount ?? 0).toLocaleString()}
+          </p>
+        </article>
+        <article className="rounded-lg border border-[#163269]/10 p-5">
+          <p className="text-sm font-light text-[#4a5568]">Recent Visits (loaded)</p>
+          <p className="mt-2 text-3xl font-normal text-primary">
+            {loading ? "—" : visitors.length}
+          </p>
+        </article>
+        <article className="rounded-lg border border-[#163269]/10 p-5">
+          <p className="text-sm font-light text-[#4a5568]">Tracking Status</p>
+          <p className={`mt-2 text-lg font-medium ${
+            settings.tracking_enabled ? "text-green-600" : "text-red-500"
+          }`}>
+            {settings.tracking_enabled ? "Active" : "Paused"}
+          </p>
+        </article>
+      </div>
+
+      <StatusMessage message={message} />
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-[#163269]/10 pb-0">
+        {["settings", "analytics"].map((tab) => (
+          <button
+            className={`px-4 py-2 text-sm font-medium capitalize rounded-t-lg border-b-2 transition ${
+              activeTab === tab
+                ? "border-secondary text-secondary"
+                : "border-transparent text-[#4a5568] hover:text-primary"
+            }`}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            type="button"
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "settings" && (
+        <div className="grid gap-3">
+          <h3 className="text-base font-medium text-primary">Feature Toggles</h3>
+          <ToggleSwitch
+            checked={settings.tracking_enabled}
+            description="Record new unique visitors in the database. Disable to pause all tracking."
+            disabled={loading}
+            label="Enable Visitor Tracking"
+            onChange={(v) => updateSetting("tracking_enabled", v)}
+          />
+          <ToggleSwitch
+            checked={settings.notifications_enabled}
+            description="Send a Telegram message for each new unique visitor. Tracking still works when off."
+            disabled={loading}
+            label="Enable Telegram Notifications"
+            onChange={(v) => updateSetting("notifications_enabled", v)}
+          />
+          <ToggleSwitch
+            checked={settings.show_public_counter}
+            description="Show the total visitor count in the public portfolio footer."
+            disabled={loading}
+            label="Show Public Visitor Counter"
+            onChange={(v) => updateSetting("show_public_counter", v)}
+          />
+        </div>
+      )}
+
+      {activeTab === "analytics" && (
+        <div className="grid gap-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-light text-[#4a5568]">
+              {loading ? "Loading..." : `Showing last ${visitors.length} visits`}
+            </p>
+            <button
+              className="rounded-lg border border-[#163269]/10 px-3 py-1.5 text-xs text-primary hover:border-[#31c0f4]/50 hover:text-secondary transition"
+              disabled={loading}
+              onClick={loadData}
+              type="button"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {visitors.length === 0 && !loading ? (
+            <p className="rounded-lg border border-[#163269]/10 p-6 text-center text-sm font-light text-[#4a5568]">
+              No visitors recorded yet. Make sure tracking is enabled and the schema has been applied in Supabase.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-[#163269]/10">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-xs font-medium uppercase tracking-wide text-[#4a5568]">
+                  <tr>
+                    {["Time (IST)", "Location", "OS", "Browser", "Device", "Referrer", "Page"].map((h) => (
+                      <th className="px-3 py-3 text-left whitespace-nowrap" key={h}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#163269]/5">
+                  {visitors.map((v) => (
+                    <tr className="hover:bg-gray-50 transition" key={v.id}>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        {toIST(v.created_at)}
+                      </td>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        {[v.city, v.state, v.country].filter(Boolean).join(", ") || "—"}
+                      </td>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        {v.os || "—"}
+                      </td>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        {v.browser ? `${v.browser} ${v.browser_version || ""}`.trim() : "—"}
+                      </td>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          v.device_type === "Mobile"
+                            ? "bg-blue-50 text-blue-700"
+                            : v.device_type === "Tablet"
+                              ? "bg-purple-50 text-purple-700"
+                              : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {v.device_type || "—"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        {v.referrer || "Direct"}
+                      </td>
+                      <td className="px-3 py-2.5 font-light text-[#4a5568] whitespace-nowrap text-xs">
+                        {v.page || "/"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Settings page ───────────────────────────────────────────────────────────
+
 const SettingsPage = ({ onLogout, sessionUser }) => (
   <dl className="grid gap-4 rounded-lg border border-[#163269]/10 p-5 text-sm">
     {[
@@ -1164,6 +1425,10 @@ const AdminApp = () => {
 
     if (activeSection === "Assets") {
       return <AssetsPage refreshProjects={refreshCounts} />;
+    }
+
+    if (activeSection === "Visitors") {
+      return <VisitorsPage />;
     }
 
     if (activeSection === "Settings") {

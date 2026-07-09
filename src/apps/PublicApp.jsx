@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 import styles from "../style";
 import { usePortfolioData } from "../hooks/usePortfolioData";
+import { useVisitorTracking } from "../hooks/useVisitorTracking";
 import {
   Navbar,
   Hero,
@@ -15,6 +16,9 @@ import {
 const PublicApp = () => {
   const { data } = usePortfolioData();
   const { siteContent } = data;
+
+  // Silent visitor tracking — no visible UI effect
+  useVisitorTracking();
 
   useEffect(() => {
     import("smoothscroll-polyfill").then(({ default: smoothscroll }) => {

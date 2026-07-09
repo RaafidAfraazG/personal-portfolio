@@ -210,3 +210,129 @@ create policy "Admin can manage achievements"
   to authenticated
   using (auth.jwt() ->> 'email' = 'raafid122@gmail.com')
   with check (auth.jwt() ->> 'email' = 'raafid122@gmail.com');
+
+-- ============================================================
+-- VISITOR TRACKING TABLES
+-- ============================================================
+
+-- visitor_settings: admin-controlled feature flags
+create table if not exists public.visitor_settings (
+  id uuid primary key default gen_random_uuid(),
+  key text unique not null,
+  value boolean not null default true,
+  updated_at timestamptz default now()
+);
+
+-- Seed default settings (safe to re-run)
+insert into public.visitor_settings (key, value)
+  values
+    ('tracking_enabled', true),
+    ('notifications_enabled', true),
+    ('show_public_counter', true)
+  on conflict (key) do nothing;
+
+-- visitors: one row per unique visitor session
+create table if not exists public.visitors (
+  id uuid primary key default gen_random_uuid(),
+  visitor_id text not null,
+  ip_hash text,
+  city text,
+  state text,
+  country text,
+  os text,
+  browser text,
+  browser_version text,
+  device_type text,
+  referrer text,
+  page text,
+  created_at timestamptz default now()
+);
+
+-- Prevent double-counting: same visitor_id within the same UTC day
+create unique index if not exists visitors_visitor_id_day_idx
+  on public.visitors (visitor_id, date_trunc('day', created_at AT TIME ZONE 'UTC'));
+
+-- visitor_count_cache: single row holding total unique visitor count
+create table if not exists public.visitor_count_cache (
+  id int primary key default 1,
+  total_count bigint not null default 0,
+  updated_at timestamptz default now()
+);
+
+-- Seed initial cache row
+insert into public.visitor_count_cache (id, total_count)
+  values (1, 0)
+  on conflict (id) do nothing;
+
+-- Trigger function: increment cache on each new visitor row
+create or replace function public.increment_visitor_count()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  update public.visitor_count_cache
+    set total_count = total_count + 1,
+        updated_at  = now()
+    where id = 1;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_visitor_insert on public.visitors;
+create trigger on_visitor_insert
+  after insert on public.visitors
+  for each row
+  execute function public.increment_visitor_count();
+
+-- ============================================================
+-- RLS for visitor tracking tables
+-- ============================================================
+
+alter table public.visitor_settings enable row level security;
+alter table public.visitors enable row level security;
+alter table public.visitor_count_cache enable row level security;
+
+-- visitor_settings: public can read; admin can manage
+drop policy if exists "Public can read visitor settings" on public.visitor_settings;
+create policy "Public can read visitor settings"
+  on public.visitor_settings
+  for select
+  using (true);
+
+drop policy if exists "Admin can manage visitor settings" on public.visitor_settings;
+create policy "Admin can manage visitor settings"
+  on public.visitor_settings
+  for all
+  to authenticated
+  using (auth.jwt() ->> 'email' = 'raafid122@gmail.com')
+  with check (auth.jwt() ->> 'email' = 'raafid122@gmail.com');
+
+-- visitors: anyone can insert (needed for anonymous tracking)
+-- Admin only for reads/deletes
+drop policy if exists "Anyone can insert visitors" on public.visitors;
+create policy "Anyone can insert visitors"
+  on public.visitors
+  for insert
+  with check (true);
+
+drop policy if exists "Admin can read visitors" on public.visitors;
+create policy "Admin can read visitors"
+  on public.visitors
+  for select
+  to authenticated
+  using (auth.jwt() ->> 'email' = 'raafid122@gmail.com');
+
+drop policy if exists "Admin can delete visitors" on public.visitors;
+create policy "Admin can delete visitors"
+  on public.visitors
+  for delete
+  to authenticated
+  using (auth.jwt() ->> 'email' = 'raafid122@gmail.com');
+
+-- visitor_count_cache: public can read total count
+drop policy if exists "Public can read visitor count" on public.visitor_count_cache;
+create policy "Public can read visitor count"
+  on public.visitor_count_cache
+  for select
+  using (true);

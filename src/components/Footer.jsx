@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { contactInfo, socialMedia } from "../constants";
 import { layout } from "../style";
 import ProfileImage from "./ProfileImage";
+import { supabase } from "../lib/supabase";
 
 const currentYear = new Date().getFullYear();
 
@@ -10,7 +11,44 @@ const Footer = ({
   socialLinks = socialMedia,
   profilePhotoUrl,
   resumeUrl,
-}) => (
+}) => {
+  const [visitorCount, setVisitorCount] = useState(null);
+  const [showCounter, setShowCounter] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    async function loadVisitorData() {
+      try {
+        // Check if public counter is enabled
+        const { data: settings } = await supabase
+          .from("visitor_settings")
+          .select("key, value")
+          .eq("key", "show_public_counter")
+          .single();
+
+        if (!settings?.value) return;
+
+        // Fetch total count
+        const { data: countData } = await supabase
+          .from("visitor_count_cache")
+          .select("total_count")
+          .eq("id", 1)
+          .single();
+
+        if (countData?.total_count != null) {
+          setVisitorCount(Number(countData.total_count));
+          setShowCounter(true);
+        }
+      } catch {
+        // Silently ignore — visitor counter is non-critical
+      }
+    }
+
+    loadVisitorData();
+  }, []);
+
+  return (
   <footer id="contactMe" className="relative bg-white sm:px-12 px-6 py-5 border-t border-gray-200">
     <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[16px_16px] opacity-50 -z-10"></div>
 
@@ -78,8 +116,15 @@ const Footer = ({
 
     <div className="text-center font-poppins font-normal text-gray-600 text-xs">
       <p>&copy; {currentYear} Raafid Afraaz G. All rights reserved.</p>
+      {showCounter && visitorCount !== null && (
+        <p className="mt-1 text-gray-400 text-[11px] flex items-center justify-center gap-1">
+          <span>👁</span>
+          <span>{visitorCount.toLocaleString()} total visitors</span>
+        </p>
+      )}
     </div>
   </footer>
-);
+  );
+};
 
 export default Footer;
