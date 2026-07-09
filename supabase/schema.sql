@@ -256,10 +256,13 @@ create unique index if not exists visitors_visitor_id_day_idx
 create table if not exists public.visitor_count_cache (
   id int primary key default 1,
   total_count    bigint not null default 0,  -- kept for backward compat (= unique_visitors)
-  unique_visitors bigint not null default 0, -- unique visitors (same as total_count)
-  total_visits   bigint not null default 0,  -- every visit, including returning
   updated_at timestamptz default now()
 );
+
+-- Add new columns if migrating an existing table
+alter table public.visitor_count_cache
+  add column if not exists unique_visitors bigint not null default 0,
+  add column if not exists total_visits bigint not null default 0;
 
 -- Seed initial cache row (safe to re-run)
 insert into public.visitor_count_cache (id, total_count, unique_visitors, total_visits)
