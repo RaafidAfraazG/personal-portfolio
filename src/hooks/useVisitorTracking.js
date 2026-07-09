@@ -1,6 +1,12 @@
 import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
+// Dev-only logger — stripped to no-ops in production builds
+const DEV = import.meta.env.DEV;
+const log = DEV ? console.log.bind(console, "[Tracking]") : () => {};
+const warn = DEV ? console.warn.bind(console, "[Tracking]") : () => {};
+const err = DEV ? console.error.bind(console, "[Tracking]") : () => {};
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /** Generate a UUID v4 */
@@ -93,24 +99,29 @@ function getOrCreateVisitorId() {
       localStorage.setItem(key, id);
     }
   } catch {
-    id = generateUUID(); // If localStorage is blocked, use ephemeral ID
+    id = generateUUID();
   }
   return id;
 }
 
-/** Returns true if we already tracked this visitor within 24 hours (client-side guard) */
-function isWithin24Hours() {
+/**
+ * Returns the raw timestamp (ms) of the last tracked visit, or null.
+ * Also doubles as the 24 h guard — callers check `lastTrackedMs !== null`.
+ */
+function getLastTrackedMs() {
   try {
-    const lastTracked = localStorage.getItem("portfolio_last_tracked_at");
-    if (!lastTracked) return false;
-    const elapsed = Date.now() - parseInt(lastTracked, 10);
-    return elapsed < 24 * 60 * 60 * 1000; // 24 hours in ms
+    const raw = localStorage.getItem("portfolio_last_tracked_at");
+    if (!raw) return null;
+    const ts = parseInt(raw, 10);
+    const elapsed = Date.now() - ts;
+    // Only count as "within window" if less than 24 h
+    return elapsed < 24 * 60 * 60 * 1000 ? ts : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-/** Mark the current time as the last tracked timestamp */
+/** Persist the current timestamp so the 24 h guard fires on the next visit */
 function markTracked() {
   try {
     localStorage.setItem("portfolio_last_tracked_at", String(Date.now()));
@@ -122,8 +133,9 @@ function markTracked() {
 // ── Main hook ──────────────────────────────────────────────────────────────
 
 /**
- * useVisitorTracking — silently records a unique visit on page load.
- * No visible UI effect. Respects admin feature flags.
+ * useVisitorTracking — silently records unique visits and notifies on every
+ * page load (new visitors counted + notified; returning visitors notified only,
+ * never double-counted). No visible UI effect. Respects admin feature flags.
  */
 export function useVisitorTracking() {
   useEffect(() => {
@@ -133,16 +145,14 @@ export function useVisitorTracking() {
 
     async function track() {
       try {
-        console.log("[Tracking] Starting visitor tracking flow...");
+        log("Starting visitor tracking flow...");
 
         // ── 1. Fetch feature-flag settings ────────────────────────────────
         const { data: settings, error: settingsError } = await supabase
           .from("visitor_settings")
           .select("key, value");
 
-        if (settingsError) {
-          console.warn("[Tracking] Could not fetch settings:", settingsError.message);
-        }
+        if (settingsError) warn("Could not fetch settings:", settingsError.message);
 
         if (cancelled) return;
 
@@ -151,18 +161,20 @@ export function useVisitorTracking() {
           return acc;
         }, {});
 
-        console.log("[Tracking] Settings loaded:", settingsMap);
+        log("Settings:", settingsMap);
 
         if (settingsMap.tracking_enabled === false) {
-          console.log("[Tracking] Tracking is disabled — skipping.");
+          log("Tracking disabled — skipping.");
           return;
         }
 
-        // ── 2. Client-side 24 h dedup guard ───────────────────────────────
-        if (isWithin24Hours()) {
-          console.log("[Tracking] Within 24 h window — skipping.");
-          return;
-        }
+        // ── 2. Determine if this is a returning visitor ────────────────────
+        // getLastTrackedMs() returns the previous timestamp if within 24 h,
+        // or null if the visitor is new (or the window has expired).
+        const lastTrackedMs = getLastTrackedMs();
+        const isReturning = lastTrackedMs !== null;
+
+        log(isReturning ? "Returning visitor (within 24 h window)." : "New visitor.");
 
         // ── 3. Collect visitor data ────────────────────────────────────────
         const ua = navigator.userAgent;
@@ -173,74 +185,76 @@ export function useVisitorTracking() {
         const referrer = classifyReferrer(document.referrer);
         const page = window.location.pathname || "/";
 
-        console.log("[Tracking] Collected data:", { visitorId, os, browser, browser_version, device_type, referrer, page });
+        log("Collected data:", { visitorId, os, browser, browser_version, device_type, referrer, page });
 
-        // ── 4. Insert visitor row ─────────────────────────────────────────
-        const { error: insertError } = await supabase.from("visitors").insert({
-          visitor_id: visitorId,
-          os,
-          browser,
-          browser_version,
-          device_type,
-          referrer,
-          page,
-        });
-
-        if (cancelled) return;
-
-        if (insertError) {
-          const isDuplicate =
-            insertError.code === "23505" ||
-            insertError.message?.toLowerCase().includes("unique");
-
-          if (isDuplicate) {
-            console.log("[Tracking] Duplicate visitor (unique index) — marking locally.");
-            markTracked();
-          } else {
-            console.warn("[Tracking] Insert failed:", insertError.message, insertError.code);
-          }
-          return;
-        }
-
-        console.log("[Tracking] Visitor row inserted successfully.");
-
-        // ── 5. Mark locally so this browser skips the next 24 h ───────────
-        markTracked();
-
-        // ── 6. Fetch total count (best-effort — MUST NOT block notification) ─
+        // ── 4. New visitor path: insert row + update count ─────────────────
         let totalCount = null;
-        try {
-          const { data: countData, error: countError } = await supabase
-            .from("visitor_count_cache")
-            .select("total_count")
-            .eq("id", 1)
-            .single();
 
-          if (countError) {
-            console.warn("[Tracking] Count query error (non-fatal):", countError.message);
+        if (!isReturning) {
+          const { error: insertError } = await supabase.from("visitors").insert({
+            visitor_id: visitorId,
+            os,
+            browser,
+            browser_version,
+            device_type,
+            referrer,
+            page,
+          });
+
+          if (cancelled) return;
+
+          if (insertError) {
+            const isDuplicate =
+              insertError.code === "23505" ||
+              insertError.message?.toLowerCase().includes("unique");
+
+            if (isDuplicate) {
+              // Server-side unique index caught a duplicate the client missed
+              log("Server-side duplicate detected — marking locally and notifying as returning.");
+              markTracked();
+              // Fall through to notify as returning — the visitor WAS here before
+            } else {
+              warn("Insert failed:", insertError.message, insertError.code);
+              return;
+            }
           } else {
-            totalCount = countData?.total_count ?? null;
-            console.log("[Tracking] Total visitor count:", totalCount);
+            log("Visitor row inserted successfully.");
+            markTracked();
+
+            // Fetch updated count (best-effort — must NOT block notification)
+            try {
+              const { data: countData, error: countError } = await supabase
+                .from("visitor_count_cache")
+                .select("total_count")
+                .eq("id", 1)
+                .single();
+
+              if (countError) {
+                warn("Count query error (non-fatal):", countError.message);
+              } else {
+                totalCount = countData?.total_count ?? null;
+                log("Total visitor count:", totalCount);
+              }
+            } catch (countErr) {
+              warn("Count query threw (non-fatal):", countErr);
+            }
           }
-        } catch (countErr) {
-          // Count query must never abort the notification path
-          console.warn("[Tracking] Count query threw (non-fatal):", countErr);
         }
 
-        // ── 7. Invoke Edge Function via supabase.functions.invoke() ─────────
-        // Using invoke() instead of raw fetch() so the Supabase client
-        // automatically attaches the correct Authorization: Bearer header.
-        // A raw fetch() with only `apikey` is rejected by the gateway (401)
-        // before the function code ever runs.
+        // ── 5. Invoke Edge Function ────────────────────────────────────────
+        // Always fires — for new visitors (after insert) and returning visitors.
+        // Returning visitors are notified but never counted.
         if (settingsMap.notifications_enabled === false) {
-          console.log("[Tracking] Telegram notifications disabled — skipping Edge Function call.");
+          log("Telegram notifications disabled — skipping Edge Function call.");
           return;
         }
 
-        console.log("[Tracking] Invoking notify-visitor Edge Function...");
+        log(
+          isReturning
+            ? "Invoking notify-visitor (returning visitor)..."
+            : "Invoking notify-visitor (new visitor)...",
+        );
 
-        // NOTE: invoke() is intentionally NOT awaited so it is fire-and-forget.
-        // We attach .then/.catch so we can still log the outcome.
         supabase.functions
           .invoke("notify-visitor", {
             body: {
@@ -252,22 +266,21 @@ export function useVisitorTracking() {
               referrer,
               page,
               total_count: totalCount,
+              is_returning: isReturning,
+              // ms elapsed since last visit — Edge Function formats this as "3h 17m ago"
+              last_visit_ms: isReturning ? Date.now() - lastTrackedMs : null,
             },
           })
           .then(({ data: fnData, error: fnError }) => {
-            if (fnError) {
-              console.warn("[Tracking] Edge Function returned error:", fnError);
-            } else {
-              console.log("[Tracking] Edge Function responded:", fnData);
-            }
+            if (fnError) warn("Edge Function returned error:", fnError);
+            else log("Edge Function responded:", fnData);
           })
-          .catch((err) => {
-            console.warn("[Tracking] Edge Function invocation threw:", err);
+          .catch((invokeErr) => {
+            warn("Edge Function invocation threw:", invokeErr);
           });
 
-      } catch (err) {
-        // Log unexpected errors — do NOT surface them to the user
-        console.error("[Tracking] Unexpected error in tracking flow:", err);
+      } catch (unexpected) {
+        err("Unexpected error in tracking flow:", unexpected);
       }
     }
 
