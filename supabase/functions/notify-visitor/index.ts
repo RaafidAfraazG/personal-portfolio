@@ -6,14 +6,22 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req: Request) => {
+  console.log("[notify-visitor] Request received:", req.method, req.url);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // 1. Parse request body
-    const body = await req.json().catch(() => ({}));
+    // ── 1. Parse request body ──────────────────────────────────────────────
+    let body: Record<string, unknown> = {};
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      console.warn("[notify-visitor] Failed to parse request body:", parseErr);
+    }
+
     const {
       visitor_id,
       os,
@@ -23,30 +31,59 @@ Deno.serve(async (req: Request) => {
       referrer,
       page,
       total_count,
-    } = body;
+    } = body as {
+      visitor_id?: string;
+      os?: string;
+      browser?: string;
+      browser_version?: string;
+      device_type?: string;
+      referrer?: string;
+      page?: string;
+      total_count?: number | null;
+    };
 
-    // 2. Check notifications_enabled setting
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    console.log("[notify-visitor] Payload:", {
+      visitor_id: visitor_id ? visitor_id.slice(0, 8) + "..." : "none",
+      os, browser, browser_version, device_type, referrer, page, total_count,
+    });
 
-    const { data: settings } = await supabase
+    // ── 2. Check notifications_enabled setting ─────────────────────────────
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("[notify-visitor] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ ok: false, error: "Supabase env vars not set" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: settings, error: settingsError } = await supabase
       .from("visitor_settings")
       .select("key, value")
       .in("key", ["notifications_enabled"]);
 
+    if (settingsError) {
+      console.warn("[notify-visitor] Settings query error (proceeding anyway):", settingsError.message);
+    }
+
     const notificationsEnabled =
-      settings?.find((s) => s.key === "notifications_enabled")?.value ?? true;
+      settings?.find((s: { key: string; value: boolean }) => s.key === "notifications_enabled")?.value ?? true;
+
+    console.log("[notify-visitor] notifications_enabled =", notificationsEnabled);
 
     if (!notificationsEnabled) {
+      console.log("[notify-visitor] Notifications disabled — skipping Telegram send.");
       return new Response(
         JSON.stringify({ ok: true, skipped: "notifications disabled" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 3. Geo-locate via real visitor IP
+    // ── 3. Geo-locate via real visitor IP ──────────────────────────────────
     const rawIp =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("x-real-ip") ||
@@ -60,6 +97,8 @@ Deno.serve(async (req: Request) => {
       rawIp.startsWith("::1") ||
       rawIp === "localhost";
 
+    console.log("[notify-visitor] IP:", rawIp, "| private:", isPrivateIp);
+
     let city = "Unknown";
     let state = "Unknown";
     let country = "Unknown";
@@ -72,18 +111,23 @@ Deno.serve(async (req: Request) => {
         );
         if (geoRes.ok) {
           const geo = await geoRes.json();
+          console.log("[notify-visitor] Geo response:", geo);
           if (geo.status === "success") {
             city = geo.city || "Unknown";
             state = geo.regionName || "Unknown";
             country = geo.country || "Unknown";
           }
+        } else {
+          console.warn("[notify-visitor] Geo API HTTP status:", geoRes.status);
         }
-      } catch {
-        // Geo lookup failed — continue without location
+      } catch (geoErr) {
+        console.warn("[notify-visitor] Geo lookup failed (non-fatal):", geoErr);
       }
     }
 
-    // 4. Format time in IST
+    console.log("[notify-visitor] Location:", { city, state, country });
+
+    // ── 4. Format time in IST ──────────────────────────────────────────────
     const now = new Date();
     const istTime = now.toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
@@ -91,7 +135,7 @@ Deno.serve(async (req: Request) => {
       timeStyle: "short",
     });
 
-    // 5. Build Telegram message
+    // ── 5. Build Telegram message ──────────────────────────────────────────
     const message = [
       `🌐 *New Portfolio Visitor*`,
       ``,
@@ -106,19 +150,22 @@ Deno.serve(async (req: Request) => {
       `👥 *Total Visitors:* ${total_count ?? "—"}`,
     ].join("\n");
 
-    // 6. Send Telegram notification
+    // ── 6. Send Telegram notification ──────────────────────────────────────
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
 
+    console.log("[notify-visitor] Bot token present:", Boolean(botToken));
+    console.log("[notify-visitor] Chat ID present:", Boolean(chatId));
+
     if (!botToken || !chatId) {
+      console.error("[notify-visitor] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set in Edge Function secrets.");
       return new Response(
-        JSON.stringify({ ok: false, error: "Telegram credentials not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        JSON.stringify({ ok: false, error: "Telegram credentials not configured in Edge Function secrets" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    console.log("[notify-visitor] Sending Telegram message...");
 
     const tgRes = await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
@@ -134,30 +181,28 @@ Deno.serve(async (req: Request) => {
     );
 
     const tgData = await tgRes.json();
+    console.log("[notify-visitor] Telegram API response:", JSON.stringify(tgData));
 
     if (!tgData.ok) {
-      console.error("Telegram API error:", tgData);
+      console.error("[notify-visitor] Telegram rejected the message:", tgData.description);
       return new Response(
         JSON.stringify({ ok: false, error: tgData.description }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    console.log("[notify-visitor] Telegram message sent successfully!");
 
     return new Response(
       JSON.stringify({ ok: true, city, state, country }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err) {
-    console.error("notify-visitor error:", err);
+    console.error("[notify-visitor] Unhandled error:", err);
     return new Response(
       JSON.stringify({ ok: false, error: String(err) }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -133,10 +133,16 @@ export function useVisitorTracking() {
 
     async function track() {
       try {
-        // 1. Check tracking_enabled flag
-        const { data: settings } = await supabase
+        console.log("[Tracking] Starting visitor tracking flow...");
+
+        // ── 1. Fetch feature-flag settings ────────────────────────────────
+        const { data: settings, error: settingsError } = await supabase
           .from("visitor_settings")
           .select("key, value");
+
+        if (settingsError) {
+          console.warn("[Tracking] Could not fetch settings:", settingsError.message);
+        }
 
         if (cancelled) return;
 
@@ -145,12 +151,20 @@ export function useVisitorTracking() {
           return acc;
         }, {});
 
-        if (settingsMap.tracking_enabled === false) return;
+        console.log("[Tracking] Settings loaded:", settingsMap);
 
-        // 2. Client-side 24h dedup guard
-        if (isWithin24Hours()) return;
+        if (settingsMap.tracking_enabled === false) {
+          console.log("[Tracking] Tracking is disabled — skipping.");
+          return;
+        }
 
-        // 3. Collect visitor data
+        // ── 2. Client-side 24 h dedup guard ───────────────────────────────
+        if (isWithin24Hours()) {
+          console.log("[Tracking] Within 24 h window — skipping.");
+          return;
+        }
+
+        // ── 3. Collect visitor data ────────────────────────────────────────
         const ua = navigator.userAgent;
         const visitorId = getOrCreateVisitorId();
         const { browser, browser_version } = detectBrowser(ua);
@@ -159,7 +173,9 @@ export function useVisitorTracking() {
         const referrer = classifyReferrer(document.referrer);
         const page = window.location.pathname || "/";
 
-        // 4. Insert visitor row (server-side unique index handles server dedup)
+        console.log("[Tracking] Collected data:", { visitorId, os, browser, browser_version, device_type, referrer, page });
+
+        // ── 4. Insert visitor row ─────────────────────────────────────────
         const { error: insertError } = await supabase.from("visitors").insert({
           visitor_id: visitorId,
           os,
@@ -172,39 +188,62 @@ export function useVisitorTracking() {
 
         if (cancelled) return;
 
-        // If insert fails with unique violation (409/23505), visitor already counted today
         if (insertError) {
-          // Mark locally to avoid future redundant calls this session
-          if (insertError.code === "23505" || insertError.message?.includes("unique")) {
+          const isDuplicate =
+            insertError.code === "23505" ||
+            insertError.message?.toLowerCase().includes("unique");
+
+          if (isDuplicate) {
+            console.log("[Tracking] Duplicate visitor (unique index) — marking locally.");
             markTracked();
+          } else {
+            console.warn("[Tracking] Insert failed:", insertError.message, insertError.code);
           }
           return;
         }
 
-        // 5. Mark as tracked to prevent re-runs in same session
+        console.log("[Tracking] Visitor row inserted successfully.");
+
+        // ── 5. Mark locally so this browser skips the next 24 h ───────────
         markTracked();
 
-        // 6. Get updated total count for the notification
-        const { data: countData } = await supabase
-          .from("visitor_count_cache")
-          .select("total_count")
-          .eq("id", 1)
-          .single();
+        // ── 6. Fetch total count (best-effort — MUST NOT block notification) ─
+        let totalCount = null;
+        try {
+          const { data: countData, error: countError } = await supabase
+            .from("visitor_count_cache")
+            .select("total_count")
+            .eq("id", 1)
+            .single();
 
-        if (cancelled) return;
+          if (countError) {
+            console.warn("[Tracking] Count query error (non-fatal):", countError.message);
+          } else {
+            totalCount = countData?.total_count ?? null;
+            console.log("[Tracking] Total visitor count:", totalCount);
+          }
+        } catch (countErr) {
+          // Count query must never abort the notification path
+          console.warn("[Tracking] Count query threw (non-fatal):", countErr);
+        }
 
-        const totalCount = countData?.total_count ?? null;
+        // ── 7. Invoke Edge Function via supabase.functions.invoke() ─────────
+        // Using invoke() instead of raw fetch() so the Supabase client
+        // automatically attaches the correct Authorization: Bearer header.
+        // A raw fetch() with only `apikey` is rejected by the gateway (401)
+        // before the function code ever runs.
+        if (settingsMap.notifications_enabled === false) {
+          console.log("[Tracking] Telegram notifications disabled — skipping Edge Function call.");
+          return;
+        }
 
-        // 7. Notify via Edge Function (fire-and-forget — don't block or show errors)
-        if (settingsMap.notifications_enabled !== false) {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          fetch(`${supabaseUrl}/functions/v1/notify-visitor`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
+        console.log("[Tracking] Invoking notify-visitor Edge Function...");
+
+        // NOTE: invoke() is intentionally NOT awaited so it is fire-and-forget.
+        // We attach .then/.catch so we can still log the outcome.
+        supabase.functions
+          .invoke("notify-visitor", {
+            body: {
               visitor_id: visitorId,
               os,
               browser,
@@ -213,15 +252,26 @@ export function useVisitorTracking() {
               referrer,
               page,
               total_count: totalCount,
-            }),
-          }).catch(() => {}); // Silently ignore notification errors
-        }
-      } catch {
-        // Never surface tracking errors to the user
+            },
+          })
+          .then(({ data: fnData, error: fnError }) => {
+            if (fnError) {
+              console.warn("[Tracking] Edge Function returned error:", fnError);
+            } else {
+              console.log("[Tracking] Edge Function responded:", fnData);
+            }
+          })
+          .catch((err) => {
+            console.warn("[Tracking] Edge Function invocation threw:", err);
+          });
+
+      } catch (err) {
+        // Log unexpected errors — do NOT surface them to the user
+        console.error("[Tracking] Unexpected error in tracking flow:", err);
       }
     }
 
-    // Small delay so it doesn't compete with critical render work
+    // Small delay so tracking doesn't compete with critical first-render work
     const timer = setTimeout(track, 1500);
 
     return () => {
