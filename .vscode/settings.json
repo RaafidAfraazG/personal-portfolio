@@ -1,0 +1,13 @@
+{
+  // Tell VS Code's Deno extension to activate ONLY for the Edge Functions
+  // folder, leaving the rest of the project under the normal TS server.
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.lint": true,
+  "deno.unstable": false,
+
+  // Prevent the regular TS server from also trying to check Deno files
+  // (it would produce the exact errors you are seeing).
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}
